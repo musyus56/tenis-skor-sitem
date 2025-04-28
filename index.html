@@ -176,7 +176,7 @@
                     updateUI();
                     startMatchChecker();
                     setupRealtimeUpdates();
-                    checkExpiredMatches(); // Girişte hemen kontrol et
+                    checkExpiredMatches();
                 } else {
                     alert("Geçersiz kulüp adı veya şifre!");
                 }
@@ -333,7 +333,6 @@
                     }
                     
                     if (now >= matchTime) {
-                        // Maçı geçmişe ekle (skor belirsiz olarak)
                         matchHistory.push({
                             date: match.date,
                             p1: match.p1,
@@ -342,7 +341,7 @@
                             winner: "Belirsiz"
                         });
                         changesMade = true;
-                        return false; // Maçı listeden çıkar
+                        return false;
                     }
                     return true;
                 } catch (e) {
@@ -376,11 +375,11 @@
             `).join("");
 
             document.getElementById("matchHistory").innerHTML = matchHistory.map((m, i) => `
-                <tr>
+                <tr onclick="deleteMatchHistory(${i})">
                     <td>${m.date}</td>
                     <td>${m.p1}</td>
                     <td>${m.p2}</td>
-                    <td onclick="updateScore(${i})" class="${m.score === 'Belirsiz' ? 'pending-score' : ''}">${m.score}</td>
+                    <td onclick="event.stopPropagation(); updateScore(${i})" class="${m.score === 'Belirsiz' ? 'pending-score' : ''}">${m.score}</td>
                     <td>${m.winner}</td>
                 </tr>
             `).join("");
@@ -414,7 +413,7 @@
         function deleteMatchHistory(index) {
             if (confirm("Bu maç geçmişini silmek istediğinize emin misiniz?")) {
                 const match = matchHistory[index];
-                if (match.winner !== "Belirsiz") {
+                if (match.winner && match.winner !== "Belirsiz") {
                     scores[match.winner] = Math.max(0, (scores[match.winner] || 0) - 1);
                 }
                 matchHistory.splice(index, 1);
@@ -441,16 +440,13 @@
                 return;
             }
             
-            // Eski kazananın puanını azalt (eğer varsa)
             if (match.winner && match.winner !== "Belirsiz") {
                 scores[match.winner] = Math.max(0, (scores[match.winner] || 0) - 1);
             }
             
-            // Yeni skoru ve kazananı güncelle
             match.score = newScore;
             match.winner = set1 > set2 ? match.p1 : match.p2;
             
-            // Kazananın puanını artır
             scores[match.winner] = (scores[match.winner] || 0) + 1;
             
             saveTenisData();
