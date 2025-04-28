@@ -76,7 +76,6 @@
         th, td {
             padding: 12px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            cursor: pointer;
         }
 
         th {
@@ -87,6 +86,20 @@
 
         tr:hover {
             background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        tr td:nth-child(4) {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        tr td:nth-child(4):hover {
+            background-color: rgba(255, 255, 0, 0.3);
+        }
+
+        .pending-score {
+            color: #FFD700;
+            font-weight: bold;
         }
 
         @media (max-width: 764px) {
@@ -128,6 +141,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loginButton').addEventListener('click', girisYap);
+
             document.getElementById('newClubButton').addEventListener('click', yeniKulup);
             document.getElementById('addPlayerButton').addEventListener('click', addPlayer);
             document.getElementById('scheduleMatchButton').addEventListener('click', scheduleMatch);
@@ -319,8 +333,16 @@
                     }
                     
                     if (now >= matchTime) {
+                        // Maçı geçmişe ekle (skor belirsiz olarak)
+                        matchHistory.push({
+                            date: match.date,
+                            p1: match.p1,
+                            p2: match.p2,
+                            score: "Belirsiz",
+                            winner: "Belirsiz"
+                        });
                         changesMade = true;
-                        return false; // Maçı direkt sil
+                        return false; // Maçı listeden çıkar
                     }
                     return true;
                 } catch (e) {
@@ -332,7 +354,7 @@
             if (changesMade) {
                 scheduledMatches = remainingMatches;
                 saveTenisData();
-                console.log("Zamanı geçen maçlar silindi");
+                console.log("Zamanı geçen maçlar geçmişe taşındı");
             }
         }
 
@@ -354,11 +376,11 @@
             `).join("");
 
             document.getElementById("matchHistory").innerHTML = matchHistory.map((m, i) => `
-                <tr onclick="deleteMatchHistory(${i})">
+                <tr>
                     <td>${m.date}</td>
                     <td>${m.p1}</td>
                     <td>${m.p2}</td>
-                    <td>${m.score}</td>
+                    <td onclick="updateScore(${i})" class="${m.score === 'Belirsiz' ? 'pending-score' : ''}">${m.score}</td>
                     <td>${m.winner}</td>
                 </tr>
             `).join("");
@@ -400,6 +422,40 @@
             }
         }
 
+        function updateScore(index) {
+            const match = matchHistory[index];
+            if (match.winner !== "Belirsiz") {
+                alert("Bu maçın skoru zaten girilmiş!");
+                return;
+            }
+            
+            const newScore = prompt("Skor girin (örn: 6-4):");
+            if (!newScore || !newScore.includes("-")) {
+                alert("Geçerli bir skor girin (örn: 6-4)");
+                return;
+            }
+            
+            const [set1, set2] = newScore.split("-").map(Number);
+            if (isNaN(set1) || isNaN(set2)) {
+                alert("Skor sayı olmalıdır!");
+                return;
+            }
+            
+            // Eski kazananın puanını azalt (eğer varsa)
+            if (match.winner && match.winner !== "Belirsiz") {
+                scores[match.winner] = Math.max(0, (scores[match.winner] || 0) - 1);
+            }
+            
+            // Yeni skoru ve kazananı güncelle
+            match.score = newScore;
+            match.winner = set1 > set2 ? match.p1 : match.p2;
+            
+            // Kazananın puanını artır
+            scores[match.winner] = (scores[match.winner] || 0) + 1;
+            
+            saveTenisData();
+        }
+
         function cikisYap() {
             clearInterval(matchCheckInterval);
             document.getElementById("loginSection").style.display = "block";
@@ -412,6 +468,7 @@
         window.deletePlayer = deletePlayer;
         window.deleteScheduledMatch = deleteScheduledMatch;
         window.deleteMatchHistory = deleteMatchHistory;
+        window.updateScore = updateScore;
     </script>
 </head>
 <body>
