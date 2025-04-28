@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kulüp Puan ve Tenis Skor Sistemi</title>
     <style>
         .logo-container {
@@ -88,28 +88,40 @@
             background-color: rgba(255, 255, 255, 0.2);
         }
 
-        tr td:nth-child(4) {
-            cursor: pointer;
-            font-weight: bold;
-        }
-        
-        tr td:nth-child(4):hover {
-            background-color: rgba(255, 255, 0, 0.3);
-        }
-
         .pending-score {
             color: #FFD700;
             font-weight: bold;
+            cursor: pointer;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         @media (max-width: 764px) {
             .container {
                 width: 95%;
-                padding: 15px;
+                padding: 10px;
             }
 
-            input, select {
+            input, select, button {
                 width: 100%;
+                font-size: 14px;
+                padding: 12px;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 12px 8px;
+            }
+
+            .clickable-row {
+                min-height: 50px;
+                display: table-row;
             }
         }
     </style>
@@ -131,9 +143,9 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        let kulupVerileri = {};
         let players = [];
         let scheduledMatches = [];
+
         let matchHistory = [];
         let scores = {};
         let matchCheckInterval;
@@ -141,7 +153,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loginButton').addEventListener('click', girisYap);
-
             document.getElementById('newClubButton').addEventListener('click', yeniKulup);
             document.getElementById('addPlayerButton').addEventListener('click', addPlayer);
             document.getElementById('scheduleMatchButton').addEventListener('click', scheduleMatch);
@@ -149,6 +160,15 @@
             document.getElementById('logoutButton').addEventListener('click', cikisYap);
             document.getElementById('matchTime').addEventListener('focus', function() {
                 this.type = 'time';
+            });
+            
+            // Maç geçmişi tablosuna event listener ekle
+            document.getElementById('matchHistory').addEventListener('click', function(e) {
+                const row = e.target.closest('tr.clickable-row');
+                if (row && !e.target.classList.contains('pending-score')) {
+                    const index = parseInt(row.getAttribute('data-match-index'));
+                    deleteMatchHistory(index);
+                }
             });
         });
 
@@ -305,7 +325,7 @@
         function saveTenisData() {
             const clubRef = ref(database, 'clubs/' + currentClub);
             set(clubRef, {
-                sifre: kulupVerileri[currentClub]?.sifre || document.getElementById("sifre").value,
+                sifre: document.getElementById("sifre").value,
                 players,
                 scheduledMatches,
                 matchHistory,
@@ -353,7 +373,6 @@
             if (changesMade) {
                 scheduledMatches = remainingMatches;
                 saveTenisData();
-                console.log("Zamanı geçen maçlar geçmişe taşındı");
             }
         }
 
@@ -375,11 +394,13 @@
             `).join("");
 
             document.getElementById("matchHistory").innerHTML = matchHistory.map((m, i) => `
-                <tr onclick="deleteMatchHistory(${i})">
+                <tr class="clickable-row" data-match-index="${i}">
                     <td>${m.date}</td>
                     <td>${m.p1}</td>
                     <td>${m.p2}</td>
-                    <td onclick="event.stopPropagation(); updateScore(${i})" class="${m.score === 'Belirsiz' ? 'pending-score' : ''}">${m.score}</td>
+                    <td class="pending-score" onclick="event.stopPropagation(); updateScore(${i})">
+                        ${m.score}
+                    </td>
                     <td>${m.winner}</td>
                 </tr>
             `).join("");
@@ -428,7 +449,7 @@
                 return;
             }
             
-            const newScore = prompt("Skor girin (örn: 6-4):");
+            const newScore = prompt("Skor girin (örn: 6-4):", match.score);
             if (!newScore || !newScore.includes("-")) {
                 alert("Geçerli bir skor girin (örn: 6-4)");
                 return;
